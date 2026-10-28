@@ -1,0 +1,50 @@
+# Synthetic 1.32 MWp / 1.0 MW plant in central Poland (see src/pv_budget/synthetic.py).
+# The model parameters below are what an analyst would configure; the synthetic "true" plant differs
+# from them on purpose (temperature coefficient, heat loss, DC losses, incidence-angle loss, degradation).
+plant:
+  name: PL-DEMO
+  latitude: 51.9
+  longitude: 19.5
+  altitude: 155
+  timezone: Europe/Warsaw
+  tilt: 25
+  azimuth: 180
+  albedo: 0.2
+  inverters:
+    - {id: INV01, dc_kwp: 330, ac_kw: 250}
+    - {id: INV02, dc_kwp: 330, ac_kw: 250}
+    - {id: INV03, dc_kwp: 330, ac_kw: 250}
+    - {id: INV04, dc_kwp: 330, ac_kw: 250}
+  gamma_pdc: -0.0035
+  u_c: 29.0
+  u_v: 0.0
+  temperature_source: ambient
+  dc_loss: 0.08
+  ac_loss: 0.01
+  inverter_eta: 0.97
+  cod: 2020-06-01
+  degradation_per_year: 0.005
+
+budget:
+  # P50 from the PVGIS TMY (SARAH3) with the plant model; losses the budget assumes:
+  soiling: 0.015
+  snow: [0.04, 0.03, 0.01, 0, 0, 0, 0, 0, 0, 0, 0.01, 0.03]
+  availability: 0.99
+  curtailment: 0.0
+  reference_date: 2020-06-01      # a year-1 budget: degradation since COD shows as its own bar
+
+data:
+  format: long
+  timezone: Europe/Warsaw         # naive local time with DST in the file
+  label: start
+  interval: 15min
+  devices: {PPC: PLANT, WS01: PLANT, SAT: PLANT}
+
+qc:
+  reference: auto
+
+losses:
+  rain_cleaning_mm: 5.0
+
+bridge:
+  method: sequential

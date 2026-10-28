@@ -1,0 +1,31 @@
+# Example guarantee clauses of an O&M / EPC contract, for testing the calculation.
+# ILLUSTRATIVE ONLY: not taken from any real agreement. Thresholds, exclusions, the damages formula and the
+# caps must be checked against the actual contract, which always prevails. Not legal advice.
+currency: EUR
+period: year                     # month | quarter | year (calendar) ; contract years if contract_start is set
+contract_start: null             # e.g. 2021-01-01 -> periods CY1, CY2, ... and the PR guarantee steps down per CY
+
+# event-log categories outside the contractor's responsibility: removed from the availability count and
+# from the PR intervals
+excluded_events: [force_majeure, grid_command, grid_outage, planned_maintenance]
+planned_maintenance_allowance_h: 24   # capacity-weighted daylight hours per period; beyond them it counts as downtime
+
+availability:
+  basis: time                    # time | energy
+  guaranteed: 0.98
+  daylight_wm2: 50
+  ld_price_per_mwh: 60.0         # damages = (guaranteed - measured) x expected energy x price
+  ld_cap: 20000.0
+  bonus_threshold: 0.995         # optional bonus above this availability
+  bonus_share: 0.5
+
+performance_ratio:
+  metric: pr_wc                  # pr | pr_25 (temperature-corrected to 25 degC) | pr_wc (weather-corrected)
+  guaranteed: 0.78               # first contract year
+  annual_degradation: 0.005      # guaranteed value reduced by this fraction per contract year
+  tolerance: 0.02                # measurement uncertainty deducted from the guaranteed value
+  min_irradiance_wm2: 50
+  exclude_curtailment: true
+  min_data_share: 0.8            # below this share of valid daylight intervals the test is inconclusive
+  ld_price_per_mwh: 60.0
+  ld_cap: 50000.0

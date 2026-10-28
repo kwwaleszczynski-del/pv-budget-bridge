@@ -1,0 +1,5 @@
+start,end,device,category,limit,note
+2024-04-12 08:00,2024-04-12 16:00,INV02,planned_maintenance,,inverter service
+2024-05-01 11:00,2024-05-01 14:00,*,grid_command,0.0,TSO instruction
+2024-06-20 09:30,2024-06-21 18:00,INV01,outage,,IGBT fault
+2024-07-03 10:00,2024-07-03 12:00,*,cleaning,,module cleaning

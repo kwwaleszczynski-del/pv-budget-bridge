@@ -1,0 +1,9 @@
+period,test,basis,measured,availability_time,availability_energy,guaranteed,pass,shortfall_kwh,damages,bonus,excluded_share,planned_maintenance_h,guaranteed_effective,data_share,contract_year
+2015,availability,time,,,,0.9800,,,,0.0000,1.0000,0.0000,,,
+2016,availability,time,0.9995,0.9995,0.9997,0.9800,True,0.0000,0.0000,36.9865,0.0000,0.0000,,,
+2017,availability,time,0.9553,0.9553,0.9567,0.9800,False,6562.4381,393.7463,0.0000,0.0000,0.0000,,,
+2018,availability,time,0.9946,0.9946,0.9986,0.9800,True,0.0000,0.0000,0.0000,0.0000,0.0000,,,
+2015,performance_ratio,pr_wc,,,,0.7800,,,,0.0000,,,0.7600,0.0000,1.0000
+2016,performance_ratio,pr_wc,0.7035,,,0.7761,False,19311.5001,1158.6900,0.0000,,,0.7561,0.9970,2.0000
+2017,performance_ratio,pr_wc,0.6784,,,0.7722,False,25669.1799,1540.1508,0.0000,,,0.7522,0.9326,3.0000
+2018,performance_ratio,pr_wc,0.6762,,,0.7684,False,27019.9892,1621.1993,0.0000,,,0.7484,0.9916,4.0000

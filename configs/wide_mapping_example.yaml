@@ -1,0 +1,32 @@
+# Template: a wide CSV export (one row per timestamp, one column per signal) mapped to the tool's signals.
+# Copy the plant section from configs/pl_demo.yaml and adapt; column names below are placeholders.
+plant:
+  name: MY-PLANT
+  latitude: 52.0
+  longitude: 19.0
+  timezone: Europe/Warsaw
+  tilt: 25
+  azimuth: 180
+  inverters:
+    - {id: INV01, dc_kwp: 330, ac_kw: 250}
+    - {id: INV02, dc_kwp: 330, ac_kw: 250}
+  cod: 2022-01-01
+
+budget:
+  path: null                    # or a PVsyst-like hourly CSV; format: monthly for a monthly P50 table
+
+data:
+  format: wide
+  timestamp_column: Timestamp
+  timezone: Europe/Warsaw       # naive local time with DST; ISO strings with offsets are read exactly
+  label: end                    # the logger stamps the end of each 10-minute average
+  interval: 15min               # resample everything to 15 minutes
+  columns:
+    "Irradiance POA [W/m2]":   {signal: poa, unit: W/m2}
+    "Ambient temp [C]":        {signal: t_amb, unit: degC}
+    "Module temp [C]":         {signal: t_mod, unit: degC}
+    "Wind [m/s]":              {signal: wind, unit: m/s}
+    "INV01 Pac [W]":           {device: INV01, signal: p_ac, unit: W}
+    "INV02 Pac [W]":           {device: INV02, signal: p_ac, unit: W}
+    "PPC limit [%]":           {signal: setpoint, unit: "%"}
+    "Meter export [kWh]":      {signal: e_export, unit: kWh}

@@ -1,0 +1,9 @@
+period,test,basis,measured,availability_time,availability_energy,guaranteed,pass,shortfall_kwh,damages,bonus,excluded_share,planned_maintenance_h,guaranteed_effective,data_share,contract_year
+2021,availability,time,0.9984,0.9984,0.9983,0.9800,True,0.0000,0.0000,143.1386,0.0139,8.0000,,,
+2022,availability,time,0.9980,0.9980,0.9976,0.9800,True,0.0000,0.0000,132.1070,0.0172,8.0000,,,
+2023,availability,time,0.9998,0.9998,0.9997,0.9800,True,0.0000,0.0000,199.7905,0.0128,8.0000,,,
+2024,availability,time,0.9985,0.9985,0.9985,0.9800,True,0.0000,0.0000,149.7374,0.0126,8.0000,,,
+2021,performance_ratio,pr_wc,0.8025,,,0.7800,True,0.0000,0.0000,0.0000,,,0.7600,0.9774,1.0000
+2022,performance_ratio,pr_wc,0.8219,,,0.7761,True,0.0000,0.0000,0.0000,,,0.7561,0.9735,2.0000
+2023,performance_ratio,pr_wc,0.8161,,,0.7722,True,0.0000,0.0000,0.0000,,,0.7522,0.9787,3.0000
+2024,performance_ratio,pr_wc,0.8134,,,0.7684,True,0.0000,0.0000,0.0000,,,0.7484,0.9776,4.0000

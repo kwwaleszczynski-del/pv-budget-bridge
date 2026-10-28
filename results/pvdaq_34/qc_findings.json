@@ -1,0 +1,74 @@
+[
+ {
+  "check": "clock",
+  "status": "ok",
+  "message": "labelling offset -0.9 min",
+  "lag_min": -0.9253168879817073
+ },
+ {
+  "check": "clear_days",
+  "status": "info",
+  "message": "429 clear days of 945",
+  "n": 429
+ },
+ {
+  "check": "orientation",
+  "status": "ok",
+  "message": "fitted tilt 6.6 deg (nominal 11.2), azimuth 175.1 deg (nominal 180)",
+  "tilt": 6.6388658523559565,
+  "azimuth": 175.091244506836
+ },
+ {
+  "check": "level_clearsky",
+  "status": "warn",
+  "message": "level +19.0% against the clear-sky model on clear days (model uncertainty a few %)",
+  "level": 0.19049535630038794
+ },
+ {
+  "check": "shading",
+  "status": "ok",
+  "message": "no recurring low-sun shading of the sensor"
+ },
+ {
+  "check": "sensor_soiling",
+  "status": "ok",
+  "message": "no decline-and-recovery pattern beyond 2.5%"
+ },
+ {
+  "check": "drift",
+  "status": "ok",
+  "message": "no sustained level change beyond 2.5% against the baseline year (3 references: cs, ref, plant)"
+ },
+ {
+  "check": "level_reference",
+  "status": "warn",
+  "message": "2016: level +11.0% against poa_ref",
+  "year": 2016,
+  "level": 0.11029779638071968
+ },
+ {
+  "check": "level_reference",
+  "status": "warn",
+  "message": "2017: level +11.3% against poa_ref",
+  "year": 2017,
+  "level": 0.11293762443031552
+ },
+ {
+  "check": "level_reference",
+  "status": "warn",
+  "message": "2018: level +9.5% against poa_ref",
+  "year": 2018,
+  "level": 0.0946322240117099
+ },
+ {
+  "check": "level_reference",
+  "status": "info",
+  "message": "POA rescaled by 1/1.110"
+ },
+ {
+  "check": "gaps",
+  "status": "info",
+  "message": "1933 daylight intervals filled from the reference",
+  "n": 1933
+ }
+]

@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PV Budget Bridge</title>
+<meta name="description" content="Monthly budget-to-actual energy bridge for PV plants, PR and guarantee tests, irradiance sensor QC, verified with injected losses on NREL PVDAQ and a synthetic Polish plant.">
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"
+  integrity="sha384-cCVCZkAjYNxaYKbM8lsArLznDF/SvMFr1jcZrvOpSTCa0W40ZAdLzHCEulnUa5i7" crossorigin="anonymous"></script>
+<script src="data.js"></script>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --border: rgba(11,11,11,0.10); --accent: #2a78d6;
+  --up: #2e8b57; --down: #c0504d; --total: #2a78d6; --warn: #b8860b;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #52514e;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --border: rgba(255,255,255,0.10); --accent: #3987e5;
+    --up: #3fae74; --down: #d9625e; --total: #3987e5; --warn: #d4a017;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c3c2b7;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 1180px; margin: 0 auto; padding: 24px 16px 48px; }
+h1 { font-size: 26px; margin: 0 0 4px; }
+h2.section { margin: 36px 0 0; font-size: 20px; }
+h3 { font-size: 15px; margin: 0 0 6px; }
+p { margin: 4px 0 12px; color: var(--ink2); }
+a { color: var(--accent); }
+.lead { max-width: 900px; }
+.note { font-size: 12.5px; color: var(--muted); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 20px 0 8px; }
+.tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+.tile .label { font-size: 13px; color: var(--ink2); }
+.tile .value { font-size: 26px; font-weight: 600; margin: 2px 0; }
+.tile .sub { font-size: 12px; color: var(--muted); }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 16px; margin-top: 12px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 14px 8px; min-width: 0; }
+.card.wide { grid-column: 1 / -1; }
+.chart { width: 100%; height: 340px; }
+.chart.tall { height: 440px; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0 4px; font-size: 13px; color: var(--ink2); }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.seg button { background: transparent; color: var(--ink2); border: 0; padding: 4px 10px; font: inherit; cursor: pointer; }
+.seg button.on { background: var(--accent); color: #fff; }
+select { font: inherit; background: var(--surface); color: var(--ink); border: 1px solid var(--border); border-radius: 6px; padding: 3px 6px; }
+.wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { padding: 4px 8px; border-bottom: 1px solid var(--grid); text-align: right; vertical-align: top; }
+th { color: var(--ink2); font-weight: 600; }
+th:first-child, td:first-child, td.l, th.l { text-align: left; }
+.ok { color: var(--up); } .fail { color: var(--down); } .warn { color: var(--warn); } .info { color: var(--muted); }
+@media (max-width: 520px) { .grid { grid-template-columns: 1fr; } .chart.tall { height: 380px; } }
+</style>
+</head>
+<body>
+<main>
+<h1>PV budget bridge</h1>
+<p class="lead">How far was a PV plant from its P50 budget last month, and why? This page splits the gap into
+irradiance, temperature, degradation, soiling, snow, clipping, availability, curtailment, data gaps and an
+unexplained rest. It also tests PR and availability guarantees and checks the irradiance sensor the whole
+calculation depends on. Plants: three NREL PVDAQ rooftop systems in Las Vegas (2016-2018) and a synthetic
+1.32 MWp plant in central Poland on ERA5 weather (2021-2024) whose every loss is known. Budgets: pvlib on the
+PVGIS typical year. <a href="https://github.com/kwwaleszczynski-del/pv-budget-bridge">Code and method</a>.</p>
+<div class="tiles" id="tiles"></div>
+
+<h2 class="section">Budget to actual</h2>
+<div class="controls">
+  <span>Plant</span><div class="seg" id="plantSeg"></div>
+  <span>Period</span><select id="monthSel"></select>
+  <span>Allocation</span><div class="seg" id="methodSeg"><button data-m="seq" class="on">Sequential</button><button data-m="shapley">Shapley</button></div>
+</div>
+<div class="grid">
+  <div class="card wide"><div id="wf" class="chart tall"></div><p class="note" id="wfNote"></p></div>
+  <div class="card wide"><h3>Every month, bar as % of the month's budget</h3><div id="heat" class="chart tall"></div></div>
+  <div class="card"><h3>Performance ratio</h3><div id="pr" class="chart"></div>
+    <p class="note">PR_wc: weather-corrected PR (Dierauf et al. 2013), corrected to the budget year's irradiance-weighted cell temperature.</p></div>
+  <div class="card"><h3>Per year</h3><div class="wrap"><table id="annual"></table></div>
+    <p class="note" id="annualNote"></p></div>
+</div>
+
+<h2 class="section">Irradiance sensor QC</h2>
+<p class="lead">Everything above leans on the plane-of-array sensor. It is compared with a clear-sky model, a
+satellite or reanalysis POA series and the plant itself. The checks look for a shifted clock, wrong orientation,
+shading at low sun, soiling and drift.</p>
+<div class="grid">
+  <div class="card wide"><h3>Findings</h3><div class="wrap"><table id="findings"></table></div></div>
+  <div class="card wide"><h3>Sensor level against three references (same weeks of the first year = 1)</h3><div id="level" class="chart"></div></div>
+  <div class="card"><h3>Clock lag on clear days (before correction)</h3><div id="lag" class="chart"></div></div>
+  <div class="card"><h3>Measured / clear sky at low sun, by sun azimuth</h3><div id="shade" class="chart"></div></div>
+</div>
+
+<h2 class="section">Verification with injected faults</h2>
+<p class="lead">Each fault is injected alone. The change of the relevant bar (injected run minus base run) is
+compared with what was taken out, so each plant's own unknown losses cancel.</p>
+<div class="grid">
+  <div class="card wide"><h3>Bridge: losses of known size</h3><div class="wrap"><table id="vBridge"></table></div></div>
+  <div class="card wide"><h3>Sensor QC: faults of known size</h3><div class="wrap"><table id="vSensor"></table></div></div>
+  <div class="card wide"><h3>Synthetic plant: every loss against its truth, 48 months</h3><div class="wrap"><table id="vTruth"></table></div></div>
+</div>
+<p class="note">Working material. PR definitions follow public descriptions of IEC 61724-1 and NREL's weather-corrected PR.
+This is not a certified implementation. The guarantee clauses are illustrative and must be checked against
+the actual contract. Data: NREL PVDAQ (CC BY 4.0), PVGIS (European Commission JRC), ERA5 (Copernicus, via Open-Meteo).</p>
+</main>
+<script>
+const D = window.DATA, E = D.examples, V = D.verification;
+const BARS = ["irradiance","temperature","degradation","soiling","snow","clipping","availability","curtailment","data_gaps","residual"];
+const LAB = {irradiance:"Irradiance", temperature:"Temperature", degradation:"Degradation", soiling:"Soiling", snow:"Snow",
+  clipping:"Clipping", availability:"Availability", curtailment:"Curtailment", data_gaps:"Data gaps", residual:"Unexplained"};
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const f0 = (v, d=0) => v == null || isNaN(v) ? "-" : Number(v).toLocaleString("en-US", {maximumFractionDigits:d, minimumFractionDigits:d});
+const pct = (v, d=1) => v == null || isNaN(v) ? "-" : (v >= 0 ? "+" : "") + Number(v).toFixed(d) + " %";
+const layout = extra => Object.assign({margin:{t:28,r:12,b:48,l:58}, paper_bgcolor:"rgba(0,0,0,0)", plot_bgcolor:"rgba(0,0,0,0)",
+  font:{color:css("--ink"), size:12}, xaxis:{gridcolor:css("--grid"), zeroline:false}, yaxis:{gridcolor:css("--grid"), zeroline:false},
+  legend:{orientation:"h", y:-0.2}}, extra || {});
+const CFG = {displayModeBar:false, responsive:true};
+let plant = Object.keys(E)[0], method = "seq";
+
+// tiles
+(function tiles() {
+  const out = [], vb = V.bridge;
+  const errs = k => Object.values(vb).map(p => p[k].error_pct).filter(x => x != null);
+  const rng = a => a.length ? `${Math.min(...a).toFixed(1)} to ${pct(Math.max(...a))}` : "-";
+  out.push(["3-day inverter outage", rng(errs("outage_3d")), "error of the availability bar, 4 plants"]);
+  const nets = Object.values(vb).map(p => p.soiling_2pct.error_net_pct).filter(x => x != null);
+  const okN = nets.filter(x => Math.abs(x) <= 30).length;
+  out.push(["2 % soiling, then a cleaning", `${okN} / ${nets.length} within 30 %`, `errors ${rng(nets)} (soiling + clipping bars); the hardest bar`]);
+  const ck = Object.values(V.sensor).map(p => p["clock_+1h"]).filter(Boolean);
+  out.push(["1-hour clock shift", `${ck.filter(c => c.detected).length} / ${ck.length} found`,
+            `start within ${Math.max(...ck.map(c => Math.abs(c.start_days_error ?? 99)))} days, corrected before the bridge`]);
+  const tr = Object.fromEntries(V.synthetic_truth.map(r => [r.component, r]));
+  out.push(["Synthetic plant, 48 months", `availability ${pct(tr.availability.total_error_pct)}`,
+            `curtailment ${pct(tr.curtailment.total_error_pct)}, soiling ${pct(tr.soiling.total_error_pct)}, snow ${pct(tr.snow.total_error_pct)}`]);
+  document.getElementById("tiles").innerHTML = out.map(t =>
+    `<div class="tile"><div class="label">${t[0]}</div><div class="value">${t[1]}</div><div class="sub">${t[2]}</div></div>`).join("");
+})();
+
+function seg(id, items, cur, cb) {
+  const el = document.getElementById(id);
+  el.innerHTML = items.map(([k, l]) => `<button data-k="${k}" class="${k === cur ? "on" : ""}">${l}</button>`).join("");
+  el.onclick = e => { const k = e.target.dataset.k; if (!k) return; [...el.children].forEach(b => b.classList.toggle("on", b.dataset.k === k)); cb(k); };
+}
+seg("plantSeg", Object.entries(E).map(([k, p]) => [k, p.plant.name]), plant, k => { plant = k; refresh(); });
+document.getElementById("methodSeg").onclick = e => {
+  const m = e.target.dataset.m; if (!m) return; method = m;
+  [...e.currentTarget.children].forEach(b => b.classList.toggle("on", b.dataset.m === m)); drawWaterfall();
+};
+const sel = document.getElementById("monthSel");
+sel.onchange = drawWaterfall;
+
+function months() { return E[plant].months; }
+function key(b) { return method === "seq" ? b : "shapley_" + b; }
+
+function drawWaterfall() {
+  const ms = months(), v = sel.value;
+  let row;
+  if (v === "all") {
+    row = {period: "all months"};
+    ["E_budget", "E_actual", ...BARS, ...BARS.map(b => "shapley_" + b)].forEach(c => row[c] = ms.reduce((s, m) => s + (m[c] || 0), 0));
+  } else row = ms[+v];
+  const unit = row.E_budget > 2e5 ? 1000 : 1, u = unit === 1000 ? "MWh" : "kWh";
+  const x = ["Budget P50", ...BARS.map(b => LAB[b]), "Actual"];
+  const y = [row.E_budget, ...BARS.map(b => row[key(b)]), row.E_actual].map(z => z / unit);
+  Plotly.react("wf", [{type:"waterfall", x, y, measure:["absolute", ...BARS.map(() => "relative"), "total"],
+    text: y.map(z => f0(z, unit === 1 ? 0 : 1)), textposition:"outside", cliponaxis:false,
+    increasing:{marker:{color:css("--up")}}, decreasing:{marker:{color:css("--down")}}, totals:{marker:{color:css("--total")}},
+    connector:{line:{color:css("--muted"), width:1}}, hovertemplate:"%{x}: %{y:,.1f} " + u + "<extra></extra>"}],
+    layout({title:{text:`${E[plant].plant.name}, ${row.period}`, font:{size:14}}, yaxis:{title:u, gridcolor:css("--grid")}, showlegend:false}), CFG);
+  const dev = (row.E_actual / row.E_budget - 1) * 100;
+  document.getElementById("wfNote").textContent = `Actual ${pct(dev)} against the budget; the bars add up to the difference exactly. ` +
+    (method === "seq" ? "Sequential: weather steps in the order irradiance, temperature, degradation; each loss bar = budget-assumed minus measured loss (kWh)." :
+     "Shapley: the month written as a product of factors, each bar the factor's Shapley value (order-free, but no bar equals a measured kWh).");
+}
+
+function drawHeat() {
+  const ms = months();
+  const z = BARS.map(b => ms.map(m => 100 * m[key(b)] / m.E_budget));
+  Plotly.react("heat", [{type:"heatmap", z, x: ms.map(m => m.period), y: BARS.map(b => LAB[b]), zmid:0, zmin:-15, zmax:15,
+    colorscale:[[0, css("--down")], [0.5, css("--surface")], [1, css("--up")]], colorbar:{title:"%", thickness:10},
+    hovertemplate:"%{y} %{x}: %{z:.1f} %<extra></extra>"}],
+    layout({margin:{t:10,r:10,b:60,l:90}, yaxis:{autorange:"reversed"}}), CFG);
+}
+
+function drawPR() {
+  const ms = months(), x = ms.map(m => m.period);
+  const tr = (c, name, color, dash) => ({x, y: ms.map(m => m[c]), name, mode:"lines+markers", line:{color, dash, width:2}, marker:{size:4}});
+  Plotly.react("pr", [tr("pr", "PR", css("--s1")), tr("pr_wc", "PR_wc", css("--s2")), tr("pr_budget", "budget PR", css("--s4"), "dot")],
+    layout({yaxis:{tickformat:".0%", gridcolor:css("--grid")}}), CFG);
+}
+
+function drawAnnual() {
+  const a = E[plant].annual;
+  document.getElementById("annual").innerHTML = "<tr><th>Year</th><th>Budget MWh</th><th>Actual MWh</th><th>Dev.</th><th>PR</th><th>PR_wc</th><th>Avail. time</th><th>Avail. energy</th></tr>" +
+    a.map(r => `<tr><td>${r.year}</td><td>${f0(r.E_budget / 1000, 1)}</td><td>${f0(r.E_actual / 1000, 1)}</td><td>${pct(100 * (r.E_actual / r.E_budget - 1))}</td>` +
+      `<td>${f0(100 * r.pr, 1)} %</td><td>${f0(100 * r.pr_wc, 1)} %</td><td>${f0(100 * r.availability_time, 2)} %</td><td>${f0(100 * r.availability_energy, 2)} %</td></tr>`).join("");
+  const y = E[plant].yoy;
+  document.getElementById("annualNote").textContent = y.rate == null ? "" :
+    `Year-on-year trend of the daily performance index: ${pct(100 * y.rate, 2)}/year (95 % CI ${pct(100 * y.low, 2)} to ${pct(100 * y.high, 2)}); the degradation bar uses the assumed rate.`;
+}
+
+function drawQC() {
+  const p = E[plant], d = p.qc_daily;
+  document.getElementById("findings").innerHTML = "<tr><th class='l'>Check</th><th class='l'>Status</th><th class='l'>Finding</th></tr>" +
+    p.findings.map(f => `<tr><td>${f.check}</td><td class="l ${f.status}">${f.status}</td><td class="l">${f.message}</td></tr>`).join("");
+  const series = [["level_cs", "clear sky", css("--s1")], ["level_ref", "satellite / reanalysis", css("--s2")],
+                  ["level_plant", "plant", css("--s3")], ["level", "median of the three", css("--ink")]];
+  Plotly.react("level", series.filter(s => d[s[0]]).map(s => ({x: d.date, y: d[s[0]], name: s[1], mode:"lines",
+    line:{color:s[2], width: s[0] === "level" ? 2.2 : 1.2}})), layout({yaxis:{tickformat:".0%", gridcolor:css("--grid")}}), CFG);
+  const ix = d.date.map((_, i) => i).filter(i => d.clear[i]);
+  Plotly.react("lag", [{x: ix.map(i => d.date[i]), y: ix.map(i => d.lag_raw_min[i]), mode:"markers", marker:{size:4, color:css("--s1")},
+    hovertemplate:"%{x}: %{y:.0f} min<extra></extra>"}], layout({yaxis:{title:"minutes", gridcolor:css("--grid")}, showlegend:false}), CFG);
+  const s = p.shading_stats || {};
+  if (s.az) {
+    const ok = s.az.map((_, i) => i).filter(i => s.days[i] >= 10);
+    Plotly.react("shade", [{x: ok.map(i => s.az[i]), y: ok.map(i => s.rho[i]), name:"median ratio", mode:"lines+markers", line:{color:css("--s1")}},
+      {x: ok.map(i => s.az[i]), y: ok.map(i => s.baseline ? s.baseline[i] : null), name:"neighbour baseline", mode:"lines", line:{color:css("--muted"), dash:"dot"}}],
+      layout({xaxis:{title:"sun azimuth (deg)", gridcolor:css("--grid")}, yaxis:{range:[0.4, 1.6], gridcolor:css("--grid")}}), CFG);
+  }
+}
+
+function verification() {
+  const vb = V.bridge, names = {soiling_2pct:"2 % soiling", outage_3d:"3-day inverter outage", limit_90pct:"limit to 90 % of AC rating"};
+  let h = "<tr><th class='l'>Plant</th><th class='l'>Injected</th><th>Truth kWh</th><th>Recovered kWh</th><th>Error</th><th>Unexplained bar moved</th><th>Other bars moved</th></tr>";
+  for (const [p, r] of Object.entries(vb)) for (const [k, v] of Object.entries(r)) {
+    const net = k === "soiling_2pct";
+    h += `<tr><td>${E[p].plant.name}</td><td class="l">${names[k]}${net ? " (net of clipping)" : ""}</td><td>${f0(net ? v.truth_net_kwh : v.truth_kwh)}</td>` +
+      `<td>${f0(net ? v.recovered_net_kwh : v.recovered_kwh)}</td><td>${v.truth_kwh > 50 ? pct(net ? v.error_net_pct : v.error_pct) : f0((net ? v.recovered_net_kwh - v.truth_net_kwh : v.error_kwh)) + " kWh"}</td>` +
+      `<td>${f0(v.residual_change_kwh)}</td><td>${f0(v.other_bars_abs_kwh)}</td></tr>`;
+  }
+  document.getElementById("vBridge").innerHTML = h;
+  let s = "<tr><th class='l'>Plant</th><th class='l'>Fault</th><th class='l'>Found</th><th class='l'>Effect on the month's bars</th></tr>";
+  for (const [p, r] of Object.entries(V.sensor)) for (const [k, v] of Object.entries(r)) {
+    let found = "", eff = "";
+    if (k.startsWith("drift")) {
+      found = v.detected ? `yes, from ${v.onset_found}; level after the ramp ${pct(100 * v.drift_after_end_est)} (true -3.0 %)` : "no (within the references' own year-to-year spread)";
+      eff = `irradiance bar ${pct(v.irradiance_change_pct_noqc)} without QC, ${pct(v.irradiance_change_pct_qc)} with QC`;
+    } else if (k.startsWith("clock")) {
+      found = v.detected ? `yes, +${v.shift_found_min} min, ${v.start_found} to ${v.end_found} (start ${v.start_days_error} d, end ${v.end_days_error} d off)` : "no";
+      eff = `sum of |bar changes| ${pct(v.abs_bar_change_pct_noqc)} of budget without QC, ${pct(v.abs_bar_change_pct_qc)} with QC`;
+    } else if (k === "orientation") {
+      found = `fitted azimuth ${f0(v.azimuth_found, 1)} deg (true ${v.azimuth_true}), tilt ${f0(v.tilt_found, 1)} deg (true 25)`;
+    } else if (k === "shading") {
+      found = v.flagged ? v.sectors_found.map(x => `azimuth ${x.az_from}-${x.az_to} deg below ${f0(x.max_elevation)} deg`).join("; ") + ` (true ${v.sector_true[0]}-${v.sector_true[1]} deg below ${v.sector_true[2]} deg)` : "no";
+    } else if (k === "sensor_soiling") {
+      found = `${v.episodes_found} of ${v.episodes_true} episodes, peaks ${v.peaks_found.map(x => f0(100 * x, 1) + " %").join(", ") || "-"} (true ${f0(100 * v.peak_true, 1)} %)`;
+    }
+    s += `<tr><td>${E[p].plant.name}</td><td class="l">${k}</td><td class="l">${found}</td><td class="l">${eff}</td></tr>`;
+  }
+  document.getElementById("vSensor").innerHTML = s;
+  document.getElementById("vTruth").innerHTML = "<tr><th class='l'>Loss</th><th>Truth MWh</th><th>Estimate MWh</th><th>Total error</th><th>Monthly MAE kWh</th><th>Monthly max kWh</th></tr>" +
+    V.synthetic_truth.map(r => `<tr><td>${LAB[r.component]}</td><td>${f0(r.truth_mwh, 1)}</td><td>${f0(r.estimate_mwh, 1)}</td><td>${pct(r.total_error_pct)}</td>` +
+      `<td>${f0(r.monthly_mae_kwh)}</td><td>${f0(r.monthly_max_kwh)}</td></tr>`).join("");
+}
+
+function refresh() {
+  const ms = months();
+  sel.innerHTML = `<option value="all">All months (sum)</option>` + ms.map((m, i) => `<option value="${i}">${m.period}</option>`).join("");
+  sel.value = String(ms.length - 1);
+  drawWaterfall(); drawHeat(); drawPR(); drawAnnual(); drawQC();
+}
+refresh(); verification();
+</script>
+</body>
+</html>

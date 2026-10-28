@@ -1,0 +1,7 @@
+component,truth_mwh,estimate_mwh,total_error_pct,monthly_mae_kwh,monthly_max_kwh,monthly_mae_pct_of_actual
+soiling,51.970,47.883,-7.863,283.660,1588.217,0.239
+snow,112.100,101.051,-9.857,230.191,3055.554,0.194
+clipping,5.368,7.530,40.278,45.487,735.248,0.038
+availability,46.720,46.493,-0.486,7.947,58.820,0.007
+curtailment,78.275,77.904,-0.474,15.670,106.579,0.013
+data_gaps,14.424,13.392,-7.156,61.209,680.529,0.052

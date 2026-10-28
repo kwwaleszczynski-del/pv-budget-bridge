@@ -1,0 +1,52 @@
+# NREL PVDAQ system 1276, Las Vegas (public, CC BY 4.0; see src/pv_budget/pvdaq.py).
+# DC rating, inverter ratings, tilt, azimuth and start date from the PVDAQ system metadata JSON.
+plant:
+  name: PVDAQ-1276 (building B)
+  latitude: 36.1952
+  longitude: -115.1582
+  altitude: 620
+  timezone: Etc/GMT+8             # local standard time, no DST (as logged)
+  tilt: 5.0
+  azimuth: 180
+  albedo: 0.2
+  inverters:
+    - {id: INV1, dc_kwp: 68.48, ac_kw: 50.0}
+  gamma_pdc: -0.0045              # typical of polycrystalline modules of that era (Sharp NU-U240F1)
+  u_c: 21.0                       # rooftop rack; fitted on this site in the pv-thermal-check repository
+  u_v: 1.35
+  # ambient sensor: stuck at 0 degF for weeks (dropped by the stuck-value check, filled from ERA5 t2m);
+  # the back-of-module sensor reads far below the cells on this site, so it is not used
+  temperature_source: ambient
+  dc_loss: 0.08
+  ac_loss: 0.01
+  inverter_eta: 0.96
+  cod: 2011-09-01
+  degradation_per_year: 0.005
+
+budget:
+  soiling: 0.02                   # desert site
+  snow: 0.0
+  availability: 0.99
+  curtailment: 0.0
+  reference_date: 2011-09-01            # a year-1 budget
+
+data:
+  format: long
+  timezone: Etc/GMT+8
+  label: end                      # PVDAQ stamps the end of each 15-minute interval (QC clock check)
+  interval: 15min
+  devices: {MET: PLANT}
+  signals:
+    poa_irradiance: {signal: poa, unit: W/m2}
+    ambient_temp_f: {signal: t_amb, unit: degF}
+    module_temp_f: {signal: t_mod, unit: degF}
+    wind_speed_mph: {signal: wind, unit: mph}
+
+qc:
+  reference: auto
+  # the met-station sensor reads 14-22 % above both the clear-sky model and ERA5 (see README):
+  # rescaled to the ERA5 level, a decision recorded here rather than made silently
+  correct_level: true
+
+bridge:
+  method: sequential
