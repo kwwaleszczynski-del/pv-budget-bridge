@@ -115,6 +115,7 @@ const BARS = ["irradiance","temperature","degradation","soiling","snow","clippin
 const LAB = {irradiance:"Irradiance", temperature:"Temperature", degradation:"Degradation", soiling:"Soiling", snow:"Snow",
   clipping:"Clipping", availability:"Availability", curtailment:"Curtailment", data_gaps:"Data gaps", residual:"Unexplained"};
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const f0 = (v, d=0) => v == null || isNaN(v) ? "-" : Number(v).toLocaleString("en-US", {maximumFractionDigits:d, minimumFractionDigits:d});
 const pct = (v, d=1) => v == null || isNaN(v) ? "-" : (v >= 0 ? "+" : "") + Number(v).toFixed(d) + " %";
 const layout = extra => Object.assign({margin:{t:28,r:12,b:48,l:58}, paper_bgcolor:"rgba(0,0,0,0)", plot_bgcolor:"rgba(0,0,0,0)",
@@ -144,7 +145,7 @@ let plant = Object.keys(E)[0], method = "seq";
 
 function seg(id, items, cur, cb) {
   const el = document.getElementById(id);
-  el.innerHTML = items.map(([k, l]) => `<button data-k="${k}" class="${k === cur ? "on" : ""}">${l}</button>`).join("");
+  el.innerHTML = items.map(([k, l]) => `<button data-k="${esc(k)}" class="${k === cur ? "on" : ""}">${esc(l)}</button>`).join("");
   el.onclick = e => { const k = e.target.dataset.k; if (!k) return; [...el.children].forEach(b => b.classList.toggle("on", b.dataset.k === k)); cb(k); };
 }
 seg("plantSeg", Object.entries(E).map(([k, p]) => [k, p.plant.name]), plant, k => { plant = k; refresh(); });
@@ -208,7 +209,7 @@ function drawAnnual() {
 function drawQC() {
   const p = E[plant], d = p.qc_daily;
   document.getElementById("findings").innerHTML = "<tr><th class='l'>Check</th><th class='l'>Status</th><th class='l'>Finding</th></tr>" +
-    p.findings.map(f => `<tr><td>${f.check}</td><td class="l ${f.status}">${f.status}</td><td class="l">${f.message}</td></tr>`).join("");
+    p.findings.map(f => `<tr><td>${esc(f.check)}</td><td class="l ${esc(f.status)}">${esc(f.status)}</td><td class="l">${esc(f.message)}</td></tr>`).join("");
   const series = [["level_cs", "clear sky", css("--s1")], ["level_ref", "satellite / reanalysis", css("--s2")],
                   ["level_plant", "plant", css("--s3")], ["level", "median of the three", css("--ink")]];
   Plotly.react("level", series.filter(s => d[s[0]]).map(s => ({x: d.date, y: d[s[0]], name: s[1], mode:"lines",
@@ -230,7 +231,7 @@ function verification() {
   let h = "<tr><th class='l'>Plant</th><th class='l'>Injected</th><th>Truth kWh</th><th>Recovered kWh</th><th>Error</th><th>Unexplained bar moved</th><th>Other bars moved</th></tr>";
   for (const [p, r] of Object.entries(vb)) for (const [k, v] of Object.entries(r)) {
     const net = k === "soiling_2pct";
-    h += `<tr><td>${E[p].plant.name}</td><td class="l">${names[k]}${net ? " (net of clipping)" : ""}</td><td>${f0(net ? v.truth_net_kwh : v.truth_kwh)}</td>` +
+    h += `<tr><td>${esc(E[p].plant.name)}</td><td class="l">${names[k]}${net ? " (net of clipping)" : ""}</td><td>${f0(net ? v.truth_net_kwh : v.truth_kwh)}</td>` +
       `<td>${f0(net ? v.recovered_net_kwh : v.recovered_kwh)}</td><td>${v.truth_kwh > 50 ? pct(net ? v.error_net_pct : v.error_pct) : f0((net ? v.recovered_net_kwh - v.truth_net_kwh : v.error_kwh)) + " kWh"}</td>` +
       `<td>${f0(v.residual_change_kwh)}</td><td>${f0(v.other_bars_abs_kwh)}</td></tr>`;
   }
@@ -251,7 +252,7 @@ function verification() {
     } else if (k === "sensor_soiling") {
       found = `${v.episodes_found} of ${v.episodes_true} episodes, peaks ${v.peaks_found.map(x => f0(100 * x, 1) + " %").join(", ") || "-"} (true ${f0(100 * v.peak_true, 1)} %)`;
     }
-    s += `<tr><td>${E[p].plant.name}</td><td class="l">${k}</td><td class="l">${found}</td><td class="l">${eff}</td></tr>`;
+    s += `<tr><td>${esc(E[p].plant.name)}</td><td class="l">${esc(k)}</td><td class="l">${esc(found)}</td><td class="l">${esc(eff)}</td></tr>`;
   }
   document.getElementById("vSensor").innerHTML = s;
   document.getElementById("vTruth").innerHTML = "<tr><th class='l'>Loss</th><th>Truth MWh</th><th>Estimate MWh</th><th>Total error</th><th>Monthly MAE kWh</th><th>Monthly max kWh</th></tr>" +
@@ -261,7 +262,7 @@ function verification() {
 
 function refresh() {
   const ms = months();
-  sel.innerHTML = `<option value="all">All months (sum)</option>` + ms.map((m, i) => `<option value="${i}">${m.period}</option>`).join("");
+  sel.innerHTML = `<option value="all">All months (sum)</option>` + ms.map((m, i) => `<option value="${i}">${esc(m.period)}</option>`).join("");
   sel.value = String(ms.length - 1);
   drawWaterfall(); drawHeat(); drawPR(); drawAnnual(); drawQC();
 }

@@ -394,7 +394,7 @@ python -m pv_budget all --jobs 4
 It expects the ERA5 file for the Polish point (Open-Meteo archive, 51.9 N 19.5 E, hourly 2021-2024: shortwave,
 direct normal and diffuse radiation, 2 m temperature, 10 m wind, precipitation, snowfall) at
 `data/era5/era5_51.90_19.50_2021_2024.parquet` or `--era5`. The full run takes about 12 minutes on 4 processes.
-The 27 tests run offline in about 10 s.
+The 30 tests run offline in about 10 s.
 
 ## Data and licences
 

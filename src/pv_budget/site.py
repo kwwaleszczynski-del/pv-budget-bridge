@@ -9,6 +9,8 @@ import json
 import logging
 from pathlib import Path
 
+from pv_budget.report import script_json
+
 log = logging.getLogger(__name__)
 
 
@@ -24,6 +26,5 @@ def build(results: Path, docs: Path) -> None:
     payload = {"examples": examples, "verification": verification}
     docs = Path(docs)
     docs.mkdir(parents=True, exist_ok=True)
-    (docs / "data.js").write_text("window.DATA = " + json.dumps(payload, separators=(",", ":")) + ";\n",
-                                  encoding="utf-8")
+    (docs / "data.js").write_text("window.DATA = " + script_json(payload) + ";\n", encoding="utf-8")
     log.info("docs/data.js: %.0f kB", (docs / "data.js").stat().st_size / 1000)

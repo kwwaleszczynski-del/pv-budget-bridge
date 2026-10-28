@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import math
+from html import escape
 from pathlib import Path
 
 import numpy as np
@@ -38,10 +39,17 @@ PLOTLY = ('<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" '
           'crossorigin="anonymous" charset="utf-8"></script>')
 
 
+def _safe(v):
+    """Text that a spreadsheet would read as a formula (=, +, -, @, tab, CR) is stored as plain text."""
+    if isinstance(v, str) and v[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + v
+    return v
+
+
 def _table(ws, df: pd.DataFrame, start_row: int = 1, formats: dict | None = None, widths: dict | None = None):
     formats = formats or {}
     for j, c in enumerate(df.columns, 1):
-        cell = ws.cell(row=start_row, column=j, value=str(c))
+        cell = ws.cell(row=start_row, column=j, value=_safe(str(c)))
         cell.fill, cell.font = HEAD, HEAD_FONT
         cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
     for i, row in enumerate(df.itertuples(index=False), start_row + 1):
@@ -52,7 +60,7 @@ def _table(ws, df: pd.DataFrame, start_row: int = 1, formats: dict | None = None
                 v = v.item()
             elif isinstance(v, pd.Timestamp):
                 v = v.tz_localize(None) if v.tzinfo else v
-            cell = ws.cell(row=i, column=j, value=v)
+            cell = ws.cell(row=i, column=j, value=_safe(v))
             cell.border = THIN
             fmt = formats.get(df.columns[j - 1])
             if fmt:
@@ -107,7 +115,7 @@ def write_excel(res, tests: pd.DataFrame | None, path, months: list[str] | None 
                      "weather-corrected PR; not a certified implementation. Contract clauses are examples.")]
     for i, (k, v) in enumerate(info, 1):
         ws.cell(row=i, column=1, value=k).font = Font(bold=True)
-        c = ws.cell(row=i, column=2, value=None if isinstance(v, float) and not math.isfinite(v) else v)
+        c = ws.cell(row=i, column=2, value=None if isinstance(v, float) and not math.isfinite(v) else _safe(v))
         if "[%" in k:
             c.number_format = "0.0%"
         elif "kWh" in k:
@@ -275,12 +283,18 @@ def site_payload(res, tests: pd.DataFrame | None) -> dict:
                    "cleanings": [{"date": f"{c['date']:%Y-%m-%d}", "step": c["step"]} for c in res.loss.cleanings]})
 
 
+def script_json(obj) -> str:
+    """JSON that cannot close the surrounding <script> element or break it with line separators."""
+    return (json.dumps(obj, separators=(",", ":")).replace("<", "\\u003c").replace(">", "\\u003e")
+            .replace("&", "\\u0026").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029"))
+
+
 def write_html(res, tests, path, months: list[str] | None = None) -> None:
     payload = site_payload(res, tests)
     if months:
         payload["months"] = [m for m in payload["months"] if m["period"] in months]
-    html = HTML_TEMPLATE.replace("__TITLE__", f"{res.cfg.plant.name} budget bridge") \
-        .replace("__PLOTLY__", PLOTLY).replace("__DATA__", json.dumps(payload, separators=(",", ":"))) \
+    html = HTML_TEMPLATE.replace("__TITLE__", escape(f"{res.cfg.plant.name} budget bridge")) \
+        .replace("__PLOTLY__", PLOTLY).replace("__DATA__", script_json(payload)) \
         .replace("__LABELS__", json.dumps(LABELS)).replace("__BARS__", json.dumps(BARS))
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     Path(path).write_text(html, encoding="utf-8")
@@ -339,6 +353,7 @@ actual agreement.</p>
 <script>
 const D = __DATA__, L = __LABELS__, B = __BARS__;
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmt = (v, d=0) => v == null ? "" : Number(v).toLocaleString("en-US", {maximumFractionDigits:d, minimumFractionDigits:d});
 document.getElementById("title").textContent = D.plant.name + " - budget to actual";
 const sel = document.getElementById("month");
@@ -359,17 +374,17 @@ function draw() {
 sel.onchange = draw; draw();
 const bt = document.getElementById("bridge");
 bt.innerHTML = "<tr><th>Month</th><th>Budget</th>" + B.map(b => "<th>" + L[b] + "</th>").join("") +
-  "<th>Actual</th><th>PR</th><th>PR wc</th><th>Avail.</th></tr>" + D.months.map(m => "<tr><td>" + m.period + "</td><td>" +
+  "<th>Actual</th><th>PR</th><th>PR wc</th><th>Avail.</th></tr>" + D.months.map(m => "<tr><td>" + esc(m.period) + "</td><td>" +
   fmt(m.E_budget) + "</td>" + B.map(b => "<td>" + fmt(m[b]) + "</td>").join("") + "<td>" + fmt(m.E_actual) + "</td><td>" +
   fmt(m.pr, 3) + "</td><td>" + fmt(m.pr_wc, 3) + "</td><td>" + fmt(100 * (m.availability_time ?? NaN), 2) + "%</td></tr>").join("");
 const ct = document.getElementById("contract");
 ct.innerHTML = "<tr><th>Period</th><th>Test</th><th>Measured</th><th>Guaranteed (eff.)</th><th>Result</th><th>Damages</th></tr>" +
-  D.contract.map(r => "<tr><td>" + r.period + "</td><td>" + r.test + " (" + r.basis + ")</td><td>" + fmt(100 * r.measured, 2) +
+  D.contract.map(r => "<tr><td>" + esc(r.period) + "</td><td>" + esc(r.test) + " (" + esc(r.basis) + ")</td><td>" + fmt(100 * r.measured, 2) +
   "%</td><td>" + fmt(100 * (r.guaranteed_effective ?? r.guaranteed), 2) + "%</td><td class='" + (r.pass === true ? "ok" : r.pass === false ? "fail" : "") +
   "'>" + (r.pass === true ? "pass" : r.pass === false ? "fail" : "n/a") + "</td><td>" + fmt(r.damages) + "</td></tr>").join("");
 document.getElementById("qc").innerHTML = "<tr><th>Check</th><th>Status</th><th style='text-align:left'>Finding</th></tr>" +
-  D.findings.map(f => "<tr><td>" + f.check + "</td><td class='" + f.status + "'>" + f.status + "</td><td style='text-align:left'>" +
-  f.message + "</td></tr>").join("");
+  D.findings.map(f => "<tr><td>" + esc(f.check) + "</td><td class='" + esc(f.status) + "'>" + esc(f.status) + "</td><td style='text-align:left'>" +
+  esc(f.message) + "</td></tr>").join("");
 </script>
 </body></html>
 """

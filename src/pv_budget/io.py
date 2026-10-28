@@ -232,7 +232,8 @@ def read_events(path, tz: str = "UTC") -> pd.DataFrame:
                         "limit": pd.to_numeric(ev.get("limit", np.nan), errors="coerce")})
     unknown = set(out["category"]) - EVENT_CATEGORIES
     if unknown:
-        log.warning("event categories not used by the tool: %s", sorted(unknown))
+        log.warning("event categories not known to the tool, read as 'other': %s", sorted(unknown))
+        out.loc[~out["category"].isin(EVENT_CATEGORIES), "category"] = "other"
     return out.sort_values("start", ignore_index=True)
 
 
