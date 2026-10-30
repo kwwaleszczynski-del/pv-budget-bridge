@@ -18,6 +18,9 @@ Performance-ratio guarantee
     contract year by ``annual_degradation`` (relative), and a measurement tolerance is subtracted.
     Shortfall energy = (PR_guaranteed_effective - PR) x reference yield of the same intervals.
 
+The availability, the PR, the guarantee step-down and the damages are computed by the res-asset-kpi library
+(``res_asset_kpi.pv``, ``res_asset_kpi.contracts``).
+
 Usage:
     python -m pv_budget run ... --contract configs/contract_example.yaml
     table = contract.evaluate(spec, analysis)
@@ -27,9 +30,12 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+import dataclasses
+
 import numpy as np
 import pandas as pd
 import yaml
+from res_asset_kpi import contracts, pv
 
 from pv_budget import kpi
 from pv_budget.losses import event_mask
@@ -59,50 +65,33 @@ def availability_test(spec: dict, state: pd.DataFrame, weights: pd.Series, frame
                       lim: np.ndarray) -> pd.DataFrame:
     """``lim``: expected AC power per interval and inverter (after soiling, snow and clipping), kW."""
     inv = list(state.columns)
-    w = weights[inv].to_numpy()
-    daylight = frame["poa"].to_numpy() > spec.get("daylight_wm2", 50)
     st = state.to_numpy()
-    known = (st != "gap") & daylight[:, None]
+    # running: up (or asleep), stopped: down, no data: gap
+    running = pd.DataFrame(np.where(st == "gap", np.nan, (st != "down").astype(float)), index=state.index,
+                           columns=inv)
     excl = event_mask(events, state.index, inv, [c for c in excluded if c != "planned_maintenance"]).to_numpy()
-    pm = event_mask(events, state.index, inv, ["planned_maintenance"]).to_numpy() & known \
-        if "planned_maintenance" in excluded else np.zeros_like(known)
-    # planned maintenance: excluded until the period's allowance (capacity-weighted daylight hours) is used
-    pm_h = (pm.astype(float) @ w) * dt_h
-    pm_ok = np.zeros_like(pm)
-    for per in pd.unique(periods):
-        pos = np.flatnonzero(periods == per)
-        cum = np.cumsum(pm_h[pos])
-        within = cum <= allowance_h + 1e-9
-        pm_ok[pos] = pm[pos] & within[:, None]
-    counted = known & ~excl & ~pm_ok
-    up = (st == "up") & counted
-    down = (st == "down") & counted
-    rows = []
-    for per in pd.unique(periods):
-        pos = np.flatnonzero(periods == per)
-        num = float((up[pos].astype(float) @ w).sum())
-        den = float((counted[pos].astype(float) @ w).sum())
-        a_time = num / den if den > 0 else np.nan
-        e_lost = float(np.where(down[pos], lim[pos], 0).sum() * dt_h)
-        e_exp = float(np.where(counted[pos], lim[pos], 0).sum() * dt_h)
-        a_energy = 1 - e_lost / e_exp if e_exp and e_exp > 0 else np.nan
-        a = a_energy if spec.get("basis", "time") == "energy" else a_time
-        g = float(spec["guaranteed"])
-        short = max(0.0, g - a) if np.isfinite(a) else np.nan
-        e_short = short * e_exp if np.isfinite(e_exp) else np.nan
-        ld = min(e_short / 1000 * spec.get("ld_price_per_mwh", 0.0), spec.get("ld_cap", np.inf)) \
-            if np.isfinite(e_short) else np.nan
-        bonus = 0.0
-        if spec.get("bonus_threshold") is not None and np.isfinite(a) and a > spec["bonus_threshold"]:
-            bonus = (a - spec["bonus_threshold"]) * e_exp / 1000 * spec.get("ld_price_per_mwh", 0.0) * \
-                spec.get("bonus_share", 0.0)
-        rows.append({"period": per, "test": "availability", "basis": spec.get("basis", "time"),
-                     "measured": a, "availability_time": a_time, "availability_energy": a_energy,
-                     "guaranteed": g, "pass": bool(a >= g) if np.isfinite(a) else None,
-                     "shortfall_kwh": e_short, "damages": ld, "bonus": bonus,
-                     "excluded_share": 1 - den / max(float((known[pos].astype(float) @ w).sum()), 1e-9),
-                     "planned_maintenance_h": float(pm_h[pos].sum())})
-    return pd.DataFrame(rows)
+    pm = event_mask(events, state.index, inv, ["planned_maintenance"]).to_numpy() \
+        if "planned_maintenance" in excluded else None
+    av = pv.availability(running, dt_h, capacity=weights[inv].to_numpy(), poa_wm2=frame["poa"].to_numpy(),
+                         daylight_wm2=spec.get("daylight_wm2", 50), excluded=excl, planned=pm,
+                         planned_allowance_h=allowance_h, expected_kw=lim, periods=np.asarray(periods))
+    basis = spec.get("basis", "time")
+    measured = av["availability_energy" if basis == "energy" else "availability_time"]
+    price = spec.get("ld_price_per_mwh", 0.0)
+    bonus = None if spec.get("bonus_threshold") is None else \
+        contracts.Bonus(threshold=spec["bonus_threshold"], share=spec.get("bonus_share", 0.0), price_per_mwh=price)
+    g = contracts.Guarantee(guaranteed=float(spec["guaranteed"]),
+                            damages=contracts.Damages(method="energy", price_per_mwh=price, cap=spec.get("ld_cap")),
+                            bonus=bonus)
+    r = contracts.assess(g, measured, basis_energy_mwh=av["expected_kwh"].to_numpy() / 1000)
+    return pd.DataFrame({"period": av.index, "test": "availability", "basis": basis,
+                         "measured": measured.to_numpy(), "availability_time": av["availability_time"].to_numpy(),
+                         "availability_energy": av["availability_energy"].to_numpy(), "guaranteed": g.guaranteed,
+                         "pass": r["passed"].to_numpy(),
+                         "shortfall_kwh": (r["shortfall"] * av["expected_kwh"]).to_numpy(),
+                         "damages": r["damages"].to_numpy(), "bonus": r["bonus"].to_numpy(),
+                         "excluded_share": av["excluded_share"].to_numpy(),
+                         "planned_maintenance_h": av["planned_h"].to_numpy()})
 
 
 def pr_test(spec: dict, frame: pd.DataFrame, state: pd.DataFrame, events, plant, t_typ: float, dt_h: float,
@@ -117,31 +106,34 @@ def pr_test(spec: dict, frame: pd.DataFrame, state: pd.DataFrame, events, plant,
         m &= ~frame["curtailed"].to_numpy()
     daylight = poa >= spec.get("min_irradiance_wm2", 50)
     metric = spec.get("metric", "pr_wc")
-    ref_key = {"pr": "ref", "pr_25": "ref_25", "pr_wc": "ref_wc"}[metric]
-    rows = []
-    for k, per in enumerate(pd.unique(periods)):
+    ref_attr = {"pr": "reference_kwh", "pr_25": "reference_25_kwh", "pr_wc": "reference_wc_kwh"}[metric]
+    pers = pd.unique(periods)
+    terms, years, share = [], [], []
+    for k, per in enumerate(pers):
         pos = periods == per
-        terms = kpi.pr_terms(frame, plant, t_typ, dt_h, mask=m & pos)
-        val = kpi.pr_values(terms)[metric]
+        terms.append(kpi.pr_terms(frame, plant, t_typ, dt_h, mask=m & pos))
         year_n = k + 1
         if start is not None:
             first = frame.index[np.flatnonzero(pos)[0]]
             s = start.tz_localize("UTC") if start.tzinfo is None else start
             year_n = int(np.floor((first - s) / pd.Timedelta(days=365.25))) + 1
-        g = float(spec["guaranteed"]) * (1 - spec.get("annual_degradation", 0.0)) ** max(year_n - 1, 0)
-        g_eff = g - spec.get("tolerance", 0.0)
-        completeness = (m & pos).sum() / max((daylight & pos).sum(), 1)
-        enough = completeness >= spec.get("min_data_share", 0.0)
-        short = max(0.0, g_eff - val) if np.isfinite(val) else np.nan
-        e_short = short * terms[ref_key] if np.isfinite(short) else np.nan
-        ld = min(e_short / 1000 * spec.get("ld_price_per_mwh", 0.0), spec.get("ld_cap", np.inf)) \
-            if np.isfinite(e_short) else np.nan
-        rows.append({"period": per, "test": "performance_ratio", "basis": metric, "measured": val,
-                     "guaranteed": g, "guaranteed_effective": g_eff,
-                     "pass": (bool(val >= g_eff) if np.isfinite(val) else None) if enough else None,
-                     "shortfall_kwh": e_short, "damages": ld if enough else np.nan, "bonus": 0.0,
-                     "data_share": completeness, "contract_year": year_n})
-    return pd.DataFrame(rows)
+        years.append(year_n)
+        share.append((m & pos).sum() / max((daylight & pos).sum(), 1))
+    measured = pd.Series([kpi.pr_values(t)[metric] for t in terms], index=pers, dtype=float)
+    ref = np.array([getattr(t, ref_attr) for t in terms], dtype=float)
+    g = contracts.Guarantee(guaranteed=float(spec["guaranteed"]),
+                            annual_degradation=spec.get("annual_degradation", 0.0),
+                            tolerance=spec.get("tolerance", 0.0), min_data_share=spec.get("min_data_share", 0.0),
+                            damages=contracts.Damages(method="energy", cap=spec.get("ld_cap"),
+                                                      price_per_mwh=spec.get("ld_price_per_mwh", 0.0)))
+    r = contracts.assess(g, measured, contract_year=years, basis_energy_mwh=ref / 1000, data_share=share)
+    stepped = contracts.effective_guarantee(dataclasses.replace(g, tolerance=0.0), years)
+    return pd.DataFrame({"period": pers, "test": "performance_ratio", "basis": metric,
+                         "measured": measured.to_numpy(),
+                         "guaranteed": stepped, "guaranteed_effective": r["guaranteed_effective"].to_numpy(),
+                         "pass": r["passed"].to_numpy(), "shortfall_kwh": r["shortfall"].to_numpy() * ref,
+                         "damages": r["damages"].to_numpy(), "bonus": 0.0, "data_share": share,
+                         "contract_year": years})
 
 
 def evaluate(spec: dict, analysis) -> pd.DataFrame:

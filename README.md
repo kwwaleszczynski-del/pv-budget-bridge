@@ -138,6 +138,10 @@ That gives an unexplained bar of -2.3 %.
 
 ## Method
 
+The PR family, the availability and PR guarantee tests (step-down, tolerance, damages, bonus) and the
+Shapley allocation are computed by [res-asset-kpi](https://github.com/kwwaleszczynski-del/res-asset-kpi)
+(`res_asset_kpi.pv`, `res_asset_kpi.contracts`), the KPI library extracted from this and five related projects.
+
 ### Budget (P50)
 
 The repository computes the budget with pvlib from the PVGIS typical meteorological year (PVGIS-SARAH3 for

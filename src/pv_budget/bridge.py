@@ -21,7 +21,8 @@ on top of irradiance, etc.); the loss bars do not depend on the order of the wea
 
 Alternative ("shapley"): the same month written as a product E_act = E_b prod f_k (weather ratios, loss
 ratios (1 - l_k)/(1 - b_k), residual), with each factor's bar the Shapley value of the product game. It is
-order-free, but no bar equals a measured quantity. Both are computed; ``bridge.method`` picks the headline.
+order-free, but no bar equals a measured quantity. Both are computed; ``bridge.method`` picks the headline. The
+Shapley values of the product are computed by the res-asset-kpi library (``res_asset_kpi.pv.shapley_product``).
 
 Usage:
     from pv_budget import bridge
@@ -30,10 +31,10 @@ Usage:
 from __future__ import annotations
 
 import logging
-from math import factorial
 
 import numpy as np
 import pandas as pd
+from res_asset_kpi.pv import shapley_product
 
 from pv_budget import model
 from pv_budget.config import Config
@@ -46,22 +47,6 @@ MIN_COVERAGE = 0.2   # months with less data than this share (dataset edges) are
 BARS = WEATHER + COMPONENTS + ["residual"]
 BUDGET_LOSS = {"soiling": "soiling", "snow": "snow", "clipping": "clip", "availability": None,
                "curtailment": "curtailment", "data_gaps": None}
-
-
-def shapley_product(base: float, factors: np.ndarray) -> np.ndarray:
-    """Shapley values of v(S) = base * prod_{k in S} f_k; they sum to base * (prod f - 1)."""
-    f = np.asarray(factors, float)
-    n = len(f)
-    w = np.array([factorial(s) * factorial(n - 1 - s) / factorial(n) for s in range(n)])
-    out = np.zeros(n)
-    for k in range(n):
-        others = np.delete(f, k)
-        e = np.zeros(n)          # elementary symmetric polynomials of the other factors
-        e[0] = 1.0
-        for x in others:
-            e[1:] = e[1:] + x * e[:-1]
-        out[k] = base * (f[k] - 1.0) * float(np.dot(w, e))
-    return out
 
 
 def monthly(cfg: Config, loss: LossResult, budget: pd.DataFrame, dt_h: float) -> pd.DataFrame:

@@ -1,5 +1,5 @@
 period,test,basis,measured,availability_time,availability_energy,guaranteed,pass,shortfall_kwh,damages,bonus,excluded_share,planned_maintenance_h,guaranteed_effective,data_share,contract_year
-2015,availability,time,,,,0.9800,,,,0.0000,1.0000,0.0000,,,
+2015,availability,time,,,,0.9800,,,,0.0000,,0.0000,,,
 2016,availability,time,0.9559,0.9559,0.9529,0.9800,False,5463.7160,327.8230,0.0000,0.0000,0.0000,,,
 2017,availability,time,0.9995,0.9995,0.9998,0.9800,True,0.0000,0.0000,32.8293,0.0000,0.0000,,,
 2018,availability,time,0.9951,0.9951,0.9988,0.9800,True,0.0000,0.0000,0.9504,0.0000,0.0000,,,

@@ -19,12 +19,12 @@ def test_pr_family_by_hand():
     f = frame([500.0, 1000.0], [35.0, 45.0], [96.0, 192.0])
     t = kpi.pr_terms(f, cfg.plant, t_typ=40.0, dt_h=1.0)
     # reference yield: 240 x (0.5 + 1.0) = 360 kWh -> PR = 288 / 360 = 0.8
-    assert t["E"] == pytest.approx(288.0)
-    assert t["ref"] == pytest.approx(360.0)
+    assert t.energy_kwh == pytest.approx(288.0)
+    assert t.reference_kwh == pytest.approx(360.0)
     # to 25 degC: 240 x (0.5 x (1 - 0.04) + 1.0 x (1 - 0.08)) = 240 x 1.40 = 336
-    assert t["ref_25"] == pytest.approx(336.0)
+    assert t.reference_25_kwh == pytest.approx(336.0)
     # weather-corrected to T_typ = 40 degC: 240 x (0.5 x 1.02 + 1.0 x 0.98) = 240 x 1.49 = 357.6
-    assert t["ref_wc"] == pytest.approx(357.6)
+    assert t.reference_wc_kwh == pytest.approx(357.6)
     v = kpi.pr_values(t)
     assert v["pr"] == pytest.approx(0.8)
     assert v["pr_25"] == pytest.approx(288 / 336)

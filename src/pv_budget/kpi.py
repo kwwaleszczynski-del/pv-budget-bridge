@@ -12,6 +12,8 @@ Definitions (written from public descriptions; this is not a certified implement
 - availability, time-based: capacity-weighted share of daylight intervals (POA above a threshold) in which
   the inverters ran, intervals without data left out; energy-based: 1 - lost energy / (lost + expected).
 
+The PR family is computed by the res-asset-kpi library (``res_asset_kpi.pv.pr_terms``).
+
 Usage:
     from pv_budget import kpi
     terms = kpi.pr_terms(loss.frame, cfg.plant, t_typ, dt_h)
@@ -21,28 +23,19 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+from res_asset_kpi import pv
 
 from pv_budget.config import Plant
 
 
-def pr_terms(frame: pd.DataFrame, plant: Plant, t_typ: float, dt_h: float, mask=None) -> dict:
-    """Sums for the PR family over the intervals in ``mask``: energy (kWh) and reference yields (kWh)."""
-    m = np.ones(len(frame), bool) if mask is None else np.asarray(mask, bool)
-    g = frame["poa"].to_numpy()[m] / 1000.0
-    tc = frame["t_cell"].to_numpy()[m]
-    e = float(frame["actual"].to_numpy()[m].sum() * dt_h)
-    p0 = plant.dc_kwp
-    return {"E": e, "H": float(g.sum() * dt_h),
-            "ref": float(p0 * g.sum() * dt_h),
-            "ref_25": float(p0 * np.sum(g * (1 + plant.gamma_pdc * (tc - 25.0))) * dt_h),
-            "ref_wc": float(p0 * np.sum(g * (1 + plant.gamma_pdc * (tc - t_typ))) * dt_h) if np.isfinite(t_typ)
-            else np.nan}
+def pr_terms(frame: pd.DataFrame, plant: Plant, t_typ: float, dt_h: float, mask=None) -> pv.PRTerms:
+    """Sums for the PR family over the intervals in ``mask``: energy and reference energies (kWh)."""
+    return pv.pr_terms(frame["actual"], frame["poa"], plant.dc_kwp, dt_h, t_cell_c=frame["t_cell"],
+                       gamma_per_k=plant.gamma_pdc, t_typ_c=t_typ, mask=mask)
 
 
-def pr_values(t: dict) -> dict:
-    def div(a, b):
-        return a / b if b and np.isfinite(b) and b > 0 else np.nan
-    return {"pr": div(t["E"], t["ref"]), "pr_25": div(t["E"], t["ref_25"]), "pr_wc": div(t["E"], t["ref_wc"])}
+def pr_values(t: pv.PRTerms) -> dict:
+    return {"pr": t.pr, "pr_25": t.pr_temperature_corrected, "pr_wc": t.pr_weather_corrected}
 
 
 def availability(frame: pd.DataFrame) -> dict:

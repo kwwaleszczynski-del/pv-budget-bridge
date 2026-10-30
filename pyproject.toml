@@ -7,7 +7,7 @@ name = "pv-budget-bridge"
 version = "0.1.0"
 description = "Monthly budget-to-actual energy bridge for PV plants: P50 budget from PVGIS TMY with pvlib, a waterfall from budget to production (irradiance, temperature, degradation, soiling, snow, clipping, availability, curtailment, residual), PR and weather-corrected PR, example contract guarantee tests and irradiance sensor QC, verified with injected losses on NREL PVDAQ and a synthetic plant."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = { text = "MIT" }
 dependencies = [
     "numpy>=1.26",
@@ -18,6 +18,7 @@ dependencies = [
     "h5py>=3.9",
     "pyyaml>=6",
     "openpyxl>=3.1",
+    "res-asset-kpi>=0.1,<0.2",
 ]
 
 [project.optional-dependencies]

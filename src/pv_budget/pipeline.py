@@ -52,7 +52,7 @@ def analyze(cfg: Config, data: PlantData, budget_table: pd.DataFrame, use_qc: bo
         sub = fr.iloc[pos.to_numpy()]
         terms = kpi.pr_terms(sub, cfg.plant, t_typ, data.dt_h)
         extra.append({"period": period, **kpi.pr_values(terms), **kpi.availability(sub),
-                      "ref_yield": terms["ref"], "ref_yield_wc": terms["ref_wc"]})
+                      "ref_yield": terms.reference_kwh, "ref_yield_wc": terms.reference_wc_kwh})
     br = br.join(pd.DataFrame(extra).set_index("period"))
     br["pr_budget"] = br["month"].map(budget_table["PR"]) if "PR" in budget_table else np.nan
     annual = annual_table(br, cfg, t_typ, fr, data.dt_h)
