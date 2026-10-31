@@ -300,20 +300,64 @@ def write_html(res, tests, path, months: list[str] | None = None) -> None:
     Path(path).write_text(html, encoding="utf-8")
 
 
+def _period_totals(s: dict) -> dict:
+    return {c: sum((r.get(c) or 0) for r in s["months"]) for c in ["E_budget", "E_actual"] + BARS}
+
+
 def markdown_summary(summary: dict, path) -> None:
-    lines = ["| plant | months | budget MWh | actual MWh | irradiance | temperature | degradation | soiling | snow | "
-             "clipping | availability | curtailment | data gaps | unexplained | PR | PR_wc |",
-             "|---" * 16 + "|"]
-    for key, s in summary.items():
-        m = s["months"]
-        tot = {c: sum((r.get(c) or 0) for r in m) for c in ["E_budget", "E_actual"] + BARS}
+    """Two tables: energy and PR per plant, then the bars as % of the budget over the whole period."""
+    energy = ["| plant | DC kWp | months | budget MWh | actual MWh | actual / budget | PR | PR_wc |", "|---" * 8 + "|"]
+    bars = ["| plant | " + " | ".join(LABELS[c].lower() for c in BARS) + " |", "|---" * (len(BARS) + 1) + "|"]
+    for s in summary.values():
+        tot = _period_totals(s)
         e_b = tot["E_budget"] or 1
         pr = np.nanmean([a["pr"] for a in s["annual"] if a.get("pr") is not None])
         prw = np.nanmean([a["pr_wc"] for a in s["annual"] if a.get("pr_wc") is not None])
-        cells = [f"{100 * tot[c] / e_b:+.1f} %" for c in BARS]
-        lines.append(f"| {s['plant']['name']} | {len(m)} | {tot['E_budget'] / 1000:,.1f} | {tot['E_actual'] / 1000:,.1f} | "
-                     + " | ".join(cells) + f" | {pr:.3f} | {prw:.3f} |")
-    Path(path).write_text("\n".join(lines) + "\n", encoding="utf-8")
+        name = s["plant"]["name"]
+        energy.append(f"| {name} | {s['plant']['dc_kwp']:,.1f} | {len(s['months'])} | {tot['E_budget'] / 1000:,.1f} | "
+                      f"{tot['E_actual'] / 1000:,.1f} | {100 * tot['E_actual'] / e_b:.1f} % | {pr:.3f} | {prw:.3f} |")
+        bars.append(f"| {name} | " + " | ".join(f"{100 * tot[c] / e_b:+.1f} %" for c in BARS) + " |")
+    Path(path).write_text("\n".join(energy) + "\n\n" + "\n".join(bars) + "\n", encoding="utf-8")
+
+
+def waterfall_svg(s: dict, path, width: int = 760) -> None:
+    """Budget-to-actual waterfall of one plant over its whole period, in % of the budget, as a static SVG (the
+    README cannot run the interactive chart). Bars run left to right; the value axis starts above zero."""
+    tot = _period_totals(s)
+    e_b = tot["E_budget"] or 1
+    steps = [(LABELS[c], 100 * tot[c] / e_b) for c in BARS]
+    levels = np.cumsum([100.0] + [v for _, v in steps])
+    lo = math.floor(min(levels.min(), 100 * tot["E_actual"] / e_b) / 5) * 5 - 5
+    hi = math.ceil(max(levels.max(), 100) / 5) * 5
+    left, top, h, bar_w = 52, 48, 240, (width - 70) / (len(steps) + 2)
+    y = lambda v: top + h * (hi - v) / (hi - lo)  # noqa: E731
+    out = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{top + h + 74}" '
+           f'font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11">',
+           f'<rect width="100%" height="100%" fill="#fcfcfb"/>',
+           f'<text x="{left}" y="18" font-size="13" fill="#0b0b0b">{escape(s["plant"]["name"])}: budget to actual over '
+           f'{len(s["months"])} months, % of the budget (axis starts at {lo} %)</text>']
+    for v in range(lo, hi + 1, 5):
+        out.append(f'<line x1="{left}" x2="{width - 10}" y1="{y(v):.1f}" y2="{y(v):.1f}" stroke="#e1e0d9"/>'
+                   f'<text x="{left - 6}" y="{y(v) + 4:.1f}" text-anchor="end" fill="#52514e">{v}</text>')
+    bars = [("Budget", lo, 100.0, "#2a78d6")]
+    for (label, v), a in zip(steps, levels[:-1]):
+        bars.append((label, a, a + v, "#2e8b57" if v >= 0 else "#c0504d"))
+    bars.append(("Actual", lo, levels[-1], "#2a78d6"))
+    for i, (label, a, b, color) in enumerate(bars):
+        x = left + 8 + i * bar_w
+        y0, y1 = sorted((y(a), y(b)))
+        value = b if label in ("Budget", "Actual") else b - a
+        text = f"{value:.1f}" if label in ("Budget", "Actual") else f"{value:+.1f}"
+        out.append(f'<rect x="{x:.1f}" y="{y0:.1f}" width="{bar_w - 10:.1f}" height="{max(y1 - y0, 1):.1f}" '
+                   f'fill="{color}"/>')
+        out.append(f'<text x="{x + (bar_w - 10) / 2:.1f}" y="{y0 - 4:.1f}" text-anchor="middle" '
+                   f'fill="#0b0b0b">{text}</text>')
+        cx, cy = x + (bar_w - 10) / 2, top + h + 12
+        out.append(f'<text transform="translate({cx:.1f},{cy:.1f}) rotate(-35)" text-anchor="end" '
+                   f'fill="#52514e">{escape(label)}</text>')
+    out.append("</svg>")
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    Path(path).write_text("\n".join(out) + "\n", encoding="utf-8")
 
 
 HTML_TEMPLATE = r"""<!doctype html>

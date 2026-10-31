@@ -33,7 +33,8 @@ budget:
 data:
   format: long
   timezone: Etc/GMT+8
-  label: end                      # PVDAQ stamps the end of each 15-minute interval (QC clock check)
+  label: end                      # the POA channel behaves like an interval-end mean (QC clock check); the AC power
+                                  # of system 34 sits about 9 min later (PVDAQ_SITE_NOTES.md, pv-outage-classifier)
   interval: 15min
   devices: {MET: PLANT}
   signals:

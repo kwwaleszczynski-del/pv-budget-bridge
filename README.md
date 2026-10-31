@@ -22,15 +22,26 @@ Excel workbook and an HTML page per plant and month, so the same code runs local
 
 ## Results in one table
 
-Four plants, every month of their data, bars as % of the budget over the whole period
-(`results/examples.md`):
+Four plants, every month of their data (`results/examples.md`); PL-DEMO is the synthetic Polish plant, the
+other three are real Las Vegas rooftops. The whole period of PVDAQ-34 as a waterfall:
 
-| plant | months | budget MWh | actual MWh | irradiance | temperature | degradation | soiling | snow | clipping | availability | curtailment | data gaps | unexplained | PR | PR_wc |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| PL-DEMO (synthetic, 1.32 MWp) | 48 | 5,737.3 | 5,688.3 | +4.7 % | -0.3 % | -1.3 % | +0.8 % | -1.3 % | +0.3 % | +0.2 % | -1.4 % | -0.2 % | -2.3 % | 0.790 | 0.793 |
-| PVDAQ-34 (146.6 kWp) | 36 | 779.0 | 664.4 | -2.7 % | -0.7 % | -3.3 % | +0.6 % | -0.0 % | -0.0 % | -0.4 % | +0.0 % | -2.3 % | -5.9 % | 0.663 | 0.667 |
-| PVDAQ-1276 (68.5 kWp) | 36 | 348.0 | 282.1 | -2.2 % | -0.7 % | -2.8 % | +1.5 % | -0.0 % | -0.0 % | -1.0 % | +0.0 % | -3.3 % | -10.4 % | 0.629 | 0.632 |
-| PVDAQ-1278 (171.4 kWp) | 36 | 873.3 | 755.1 | -1.8 % | -0.7 % | -2.8 % | +1.3 % | -0.1 % | -0.1 % | -0.2 % | +0.0 % | -1.4 % | -7.8 % | 0.669 | 0.673 |
+![Budget-to-actual waterfall of PVDAQ-34](results/waterfall_pvdaq_34.svg)
+
+| plant | DC kWp | months | budget MWh | actual MWh | actual / budget | PR | PR_wc |
+|---|---|---|---|---|---|---|---|
+| PL-DEMO | 1,320.0 | 48 | 5,737.3 | 5,688.3 | 99.1 % | 0.790 | 0.793 |
+| PVDAQ-34 (building A) | 146.6 | 36 | 779.0 | 664.4 | 85.3 % | 0.663 | 0.667 |
+| PVDAQ-1276 (building B) | 68.5 | 36 | 348.0 | 282.1 | 81.1 % | 0.629 | 0.632 |
+| PVDAQ-1278 (building D) | 171.4 | 36 | 873.3 | 755.1 | 86.5 % | 0.669 | 0.673 |
+
+The bars, as % of the budget over the whole period:
+
+| plant | irradiance | temperature | degradation | soiling | snow | clipping | availability | curtailment | data gaps | unexplained |
+|---|---|---|---|---|---|---|---|---|---|---|
+| PL-DEMO | +4.7 % | -0.3 % | -1.3 % | +0.8 % | -1.3 % | +0.3 % | +0.2 % | -1.4 % | -0.2 % | -2.3 % |
+| PVDAQ-34 (building A) | -2.7 % | -0.7 % | -3.3 % | +0.6 % | -0.0 % | -0.0 % | -0.4 % | +0.0 % | -2.3 % | -5.9 % |
+| PVDAQ-1276 (building B) | -2.2 % | -0.7 % | -2.8 % | +1.5 % | -0.0 % | -0.0 % | -1.0 % | +0.0 % | -3.3 % | -10.4 % |
+| PVDAQ-1278 (building D) | -1.8 % | -0.7 % | -2.8 % | +1.3 % | -0.1 % | -0.1 % | -0.2 % | +0.0 % | -1.4 % | -7.8 % |
 
 A positive loss bar means the plant lost less than the budget assumed (e.g. the budgets assume 2 % soiling
 in Las Vegas and 1.5 % in Poland).
@@ -98,8 +109,10 @@ In single months the difference reaches 7.5 % (PL-DEMO, a month with irradiance 
 Three rooftop systems of one school campus in Las Vegas (NREL PVDAQ 34, 1276, 1278, 2016-2018), all logging the
 same met-station POA sensor:
 
-- **Timestamps** sit 14 minutes late when read as interval starts: PVDAQ stamps the end of each 15-minute
-  average (`data.label: end`; the clock check then reads -1 min).
+- **Timestamps** of the POA channel sit 14 minutes late when read as interval starts: it behaves like a
+  15-minute mean stamped at the end of its interval (`data.label: end`; the clock check then reads -1 min).
+  The AC power of system 34 is not stamped the same way: it sits about 9 minutes later than the POA. Monthly
+  energy sums do not depend on that; quarter-hour comparisons of power with irradiance carry the lag.
 - **The sensor reads high.** It is 19-23 % above the clear-sky model on clear days and 9.5-16.4 % above ERA5
   (per year). Rescaled to ERA5 (`qc.correct_level: true`, a decision written in the config). Without that,
   the irradiance bar would read +10-16 % and the unexplained bar -15-25 %.
@@ -109,12 +122,17 @@ same met-station POA sensor:
   These are dropped and filled from ERA5 2 m temperature. The back-of-module sensor reads far below the cells
   on this site (found in the companion repository pv-thermal-check), so cell temperature comes from ambient.
 - **Availability** (time-based, daylight, capacity-weighted):
-  - 95.6 % for system 34 in 2016 (the June 2016 inverter failure);
+  - 95.6 % for system 34 in 2016 (the June 2016 inverter failure: only its 12 days of logged zero output
+    count; the 22 days without inverter data that follow are missing data and go to the data-gaps bar);
   - 95.5 % for system 1278 in 2017;
   - 91.8 % for system 1276 in 2018 (zero output from November);
-  - 99.5-100 % otherwise.
+  - 99.5-100 % otherwise (system 1276 in 2017 includes a 32-day gap in the inverter data, again counted as
+    missing data, not as unavailability).
 
-  None of these outages is logged; the tool lists them as "unlogged".
+  PVDAQ has no outage log, and the tool does not read the inverter error code (on system 34 the first code
+  came 10 days after the stop), so it lists these outages as "unlogged". The course of the outages and the
+  timestamp conventions of the channels are in the shared
+  [PVDAQ site notes](https://github.com/kwwaleszczynski-del/pv-outage-classifier/blob/main/PVDAQ_SITE_NOTES.md).
 - **The unexplained bar is -6 to -10 % of the budget.** PR 0.63-0.67 against a design-type budget PR of 0.76:
   these 2010-2011 rooftops underperform a generic model (8 % DC losses, 0.5 %/year degradation). The
   year-on-year trend of the daily performance index is noisy: system 34 +0.15 %/yr (CI -0.24 to +0.68),

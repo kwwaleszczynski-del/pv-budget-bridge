@@ -134,6 +134,8 @@ def cmd_examples(a):
     summary = {k: v for k, v in zip(keys, outs)}
     (res_dir / "examples.json").write_text(json.dumps(summary, indent=1, default=str))
     report.markdown_summary(summary, res_dir / "examples.md")
+    if "pvdaq_34" in summary:  # the README figure
+        report.waterfall_svg(summary["pvdaq_34"], res_dir / "waterfall_pvdaq_34.svg")
 
 
 def _example_job(key: str, data: str, res_dir: str) -> dict:

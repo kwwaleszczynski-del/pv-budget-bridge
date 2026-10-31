@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="362" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11">
+<rect width="100%" height="100%" fill="#fcfcfb"/>
+<text x="52" y="18" font-size="13" fill="#0b0b0b">PVDAQ-34 (building A): budget to actual over 36 months, % of the budget (axis starts at 80 %)</text>
+<line x1="52" x2="750" y1="288.0" y2="288.0" stroke="#e1e0d9"/><text x="46" y="292.0" text-anchor="end" fill="#52514e">80</text>
+<line x1="52" x2="750" y1="228.0" y2="228.0" stroke="#e1e0d9"/><text x="46" y="232.0" text-anchor="end" fill="#52514e">85</text>
+<line x1="52" x2="750" y1="168.0" y2="168.0" stroke="#e1e0d9"/><text x="46" y="172.0" text-anchor="end" fill="#52514e">90</text>
+<line x1="52" x2="750" y1="108.0" y2="108.0" stroke="#e1e0d9"/><text x="46" y="112.0" text-anchor="end" fill="#52514e">95</text>
+<line x1="52" x2="750" y1="48.0" y2="48.0" stroke="#e1e0d9"/><text x="46" y="52.0" text-anchor="end" fill="#52514e">100</text>
+<rect x="60.0" y="48.0" width="47.5" height="240.0" fill="#2a78d6"/>
+<text x="83.8" y="44.0" text-anchor="middle" fill="#0b0b0b">100.0</text>
+<text transform="translate(83.8,300.0) rotate(-35)" text-anchor="end" fill="#52514e">Budget</text>
+<rect x="117.5" y="48.0" width="47.5" height="32.4" fill="#c0504d"/>
+<text x="141.2" y="44.0" text-anchor="middle" fill="#0b0b0b">-2.7</text>
+<text transform="translate(141.2,300.0) rotate(-35)" text-anchor="end" fill="#52514e">Irradiance</text>
+<rect x="175.0" y="80.4" width="47.5" height="8.5" fill="#c0504d"/>
+<text x="198.8" y="76.4" text-anchor="middle" fill="#0b0b0b">-0.7</text>
+<text transform="translate(198.8,300.0) rotate(-35)" text-anchor="end" fill="#52514e">Temperature</text>
+<rect x="232.5" y="88.9" width="47.5" height="39.1" fill="#c0504d"/>
+<text x="256.2" y="84.9" text-anchor="middle" fill="#0b0b0b">-3.3</text>
+<text transform="translate(256.2,300.0) rotate(-35)" text-anchor="end" fill="#52514e">Degradation</text>
+<rect x="290.0" y="121.3" width="47.5" height="6.7" fill="#2e8b57"/>
+<text x="313.8" y="117.3" text-anchor="middle" fill="#0b0b0b">+0.6</text>
+<text transform="translate(313.8,300.0) rotate(-35)" text-anchor="end" fill="#52514e">Soiling</text>
+<rect x="347.5" y="121.3" width="47.5" height="1.0" fill="#c0504d"/>
+<text x="371.2" y="117.3" text-anchor="middle" fill="#0b0b0b">-0.0</text>
+<text transform="translate(371.2,300.0) rotate(-35)" text-anchor="end" fill="#52514e">Snow</text>
+<rect x="405.0" y="121.9" width="47.5" height="1.0" fill="#c0504d"/>
+<text x="428.8" y="117.9" text-anchor="middle" fill="#0b0b0b">-0.0</text>
+<text transform="translate(428.8,300.0) rotate(-35)" text-anchor="end" fill="#52514e">Clipping</text>
+<rect x="462.5" y="122.0" width="47.5" height="4.5" fill="#c0504d"/>
+<text x="486.2" y="118.0" text-anchor="middle" fill="#0b0b0b">-0.4</text>
+<text transform="translate(486.2,300.0) rotate(-35)" text-anchor="end" fill="#52514e">Availability</text>
+<rect x="520.0" y="126.5" width="47.5" height="1.0" fill="#2e8b57"/>
+<text x="543.8" y="122.5" text-anchor="middle" fill="#0b0b0b">+0.0</text>
+<text transform="translate(543.8,300.0) rotate(-35)" text-anchor="end" fill="#52514e">Curtailment</text>
+<rect x="577.5" y="126.5" width="47.5" height="27.6" fill="#c0504d"/>
+<text x="601.2" y="122.5" text-anchor="middle" fill="#0b0b0b">-2.3</text>
+<text transform="translate(601.2,300.0) rotate(-35)" text-anchor="end" fill="#52514e">Data gaps</text>
+<rect x="635.0" y="154.1" width="47.5" height="70.5" fill="#c0504d"/>
+<text x="658.8" y="150.1" text-anchor="middle" fill="#0b0b0b">-5.9</text>
+<text transform="translate(658.8,300.0) rotate(-35)" text-anchor="end" fill="#52514e">Unexplained</text>
+<rect x="692.5" y="224.6" width="47.5" height="63.4" fill="#2a78d6"/>
+<text x="716.2" y="220.6" text-anchor="middle" fill="#0b0b0b">85.3</text>
+<text transform="translate(716.2,300.0) rotate(-35)" text-anchor="end" fill="#52514e">Actual</text>
+</svg>
