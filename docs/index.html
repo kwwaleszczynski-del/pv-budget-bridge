@@ -173,7 +173,9 @@ function drawWaterfall() {
     text: y.map(z => f0(z, unit === 1 ? 0 : 1)), textposition:"outside", cliponaxis:false,
     increasing:{marker:{color:css("--up")}}, decreasing:{marker:{color:css("--down")}}, totals:{marker:{color:css("--total")}},
     connector:{line:{color:css("--muted"), width:1}}, hovertemplate:"%{x}: %{y:,.1f} " + u + "<extra></extra>"}],
-    layout({title:{text:`${E[plant].plant.name}, ${row.period}`, font:{size:14}}, yaxis:{title:u, gridcolor:css("--grid")}, showlegend:false}), CFG);
+    layout({title:{text:`${E[plant].plant.name}, ${row.period}`, font:{size:14}}, yaxis:{title:u, gridcolor:css("--grid")}, showlegend:false,
+            // category labels need their own margin; steeper on phones
+            xaxis:{gridcolor:css("--grid"), zeroline:false, automargin:true, tickangle: innerWidth < 640 ? -60 : "auto"}}), CFG);
   const dev = (row.E_actual / row.E_budget - 1) * 100;
   document.getElementById("wfNote").textContent = `Actual ${pct(dev)} against the budget; the bars add up to the difference exactly. ` +
     (method === "seq" ? "Sequential: weather steps in the order irradiance, temperature, degradation; each loss bar = budget-assumed minus measured loss (kWh)." :
