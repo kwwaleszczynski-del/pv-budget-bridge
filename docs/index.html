@@ -175,7 +175,8 @@ function drawWaterfall() {
     connector:{line:{color:css("--muted"), width:1}}, hovertemplate:"%{x}: %{y:,.1f} " + u + "<extra></extra>"}],
     layout({title:{text:`${E[plant].plant.name}, ${row.period}`, font:{size:14}}, yaxis:{title:u, gridcolor:css("--grid")}, showlegend:false,
             // category labels need their own margin; steeper on phones
-            xaxis:{gridcolor:css("--grid"), zeroline:false, automargin:true, tickangle: innerWidth < 640 ? -60 : "auto"}}), CFG);
+            xaxis:{gridcolor:css("--grid"), zeroline:false, automargin:true, tickangle: innerWidth < 640 ? -90 : "auto",
+                   tickfont:{size: innerWidth < 640 ? 10 : 12}}}), CFG);
   const dev = (row.E_actual / row.E_budget - 1) * 100;
   document.getElementById("wfNote").textContent = `Actual ${pct(dev)} against the budget; the bars add up to the difference exactly. ` +
     (method === "seq" ? "Sequential: weather steps in the order irradiance, temperature, degradation; each loss bar = budget-assumed minus measured loss (kWh)." :
@@ -224,7 +225,9 @@ function drawQC() {
     const ok = s.az.map((_, i) => i).filter(i => s.days[i] >= 10);
     Plotly.react("shade", [{x: ok.map(i => s.az[i]), y: ok.map(i => s.rho[i]), name:"median ratio", mode:"lines+markers", line:{color:css("--s1")}},
       {x: ok.map(i => s.az[i]), y: ok.map(i => s.baseline ? s.baseline[i] : null), name:"neighbour baseline", mode:"lines", line:{color:css("--muted"), dash:"dot"}}],
-      layout({xaxis:{title:"sun azimuth (deg)", gridcolor:css("--grid")}, yaxis:{range:[0.4, 1.6], gridcolor:css("--grid")}}), CFG);
+      layout(Object.assign({xaxis:{title:"sun azimuth (deg)", gridcolor:css("--grid")}, yaxis:{range:[0.4, 1.6], gridcolor:css("--grid")}},
+        // phones: the legend wraps and needs to sit below the axis title
+        innerWidth < 640 ? {legend:{orientation:"h", y:-0.38, yanchor:"top"}, margin:{t:28, r:12, b:90, l:58}} : {})), CFG);
   }
 }
 
